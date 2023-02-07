@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vreiheit-discord-bot-deployment
+  labels:
+    app: vreiheit
+    type: discord-bot-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vreiheit
+      type: discord-bot-deployment
+  template:
+    metadata:
+      labels:
+        app: vreiheit
+        type: discord-bot-deployment
+    spec:
+      containers:
+      - name: vreiheit-discord-bot
+        image: ghcr.io/eyyy-nora/vreiheit-bot
+        envFrom:
+        - configMapRef:
+            name: vreiheit-postgres-config
+        - secretRef:
+            name: vreiheit-postgres-user
+        - secretRef:
+            name: vreiheit-postgres-password

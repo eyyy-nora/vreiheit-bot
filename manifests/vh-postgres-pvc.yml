@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vreiheit-postgres-pvc
+spec:
+  selector:
+    matchLabels:
+      app: vreiheit-postgres-pv
+      ver: vreiheit-postgres-01-pv
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi

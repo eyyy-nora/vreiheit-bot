@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: PersistentVolume
+metadata:
+  name: vreiheit-postgres-01-pv
+  labels:
+    app: vreiheit-postgres-pv
+    ver: vreiheit-postgres-01-pv
+  spec:
+    capacity:
+      storage: 10Gi
+    accessModes:
+    persistentVolumeReclaimPolicy: Retain

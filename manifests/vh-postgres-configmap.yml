@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: vreiheit-postgres-config
+data:
+  POSTGRES_DB: vreiheit
+  POSTGRES_USER: vreiheit-postgres-user
+  POSTGRES_PASSWORD: vreiheit-postgres-password
+  PGDATA: /var/lib/postgresql/data
+  POSTGRES_PORT: "5432"
