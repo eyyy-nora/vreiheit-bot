@@ -49,6 +49,12 @@ export class Server {
   notVeganRoleId?: string;
 
   @Column("varchar", { nullable: true })
+  modRoleId?: string;
+
+  @Column("varchar", { nullable: true })
+  modHelpChannel?: string;
+
+  @Column("varchar", { nullable: true })
   hierarchy?: string;
 
   @Column("varchar", { nullable: true })

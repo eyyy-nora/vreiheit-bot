@@ -53,6 +53,9 @@ export class ServerMember {
   @Column("timestamp", { nullable: true })
   leftAt?: Date | null;
 
+  @Column("boolean", { default: false })
+  suspect!: boolean;
+
   @OneToMany(() => BlockedTerm, ({ author }) => author)
   blockedTerms!: BlockedTerm[];
 
