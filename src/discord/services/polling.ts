@@ -256,35 +256,31 @@ export class PollingService {
 
   async concludePoll(guild: Guild, poll: Poll) {
     await withResource(Poll, { id: poll.id }, async poll => {
-      const polls = this.polls[guild.id];
-      polls.splice(
-        polls.findIndex(it => it.id === poll.id),
-        1,
-      );
       poll.closed = true;
       for (const choice of Object.values(poll.counts)) {
         if (poll.results[choice] == null) poll.results[choice] = 1;
         else poll.results[choice]++;
       }
-    });
-    const results = Object.entries(poll.results).sort(([, a], [, b]) => b - a);
-
-    await editMessage(guild, poll.channelId, poll.messageId, {
-      embeds: [
-        new EmbedBuilder()
-          .setTitle(`Geschlossen: ${poll.title}`)
-          .setDescription(poll.description)
-          .setFields(
-            results.map(([title, value]) => ({
-              name: title,
-              value: value.toString(),
-            })),
-          )
-          .setFooter({
-            text: `Geschlossen am ${this.formatDate(poll.conclusion)}`,
-          }),
-      ],
-      components: [],
+      const results = Object.entries(poll.results).sort(
+        ([, a], [, b]) => b - a,
+      );
+      await editMessage(guild, poll.channelId, poll.messageId, {
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`Geschlossen: ${poll.title}`)
+            .setDescription(poll.description)
+            .setFields(
+              results.map(([title, value]) => ({
+                name: title,
+                value: value.toString(),
+              })),
+            )
+            .setFooter({
+              text: `Geschlossen am ${this.formatDate(poll.conclusion)}`,
+            }),
+        ],
+        components: [],
+      });
     });
   }
 }
