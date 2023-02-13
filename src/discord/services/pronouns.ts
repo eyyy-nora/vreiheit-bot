@@ -228,7 +228,11 @@ export class Pronouns {
     for (const role of pronouns as string[]) {
       const has = roles.has(role);
       const match = role === roleId;
-      if ((has && match) || !match) {
+      if (has && match) {
+        added = role;
+        continue;
+      }
+      if (!match) {
         if (has) await member.roles.remove(role);
         if (has && other.includes(role)) {
           await member.guild.roles.delete(role);

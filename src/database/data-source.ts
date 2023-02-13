@@ -2,6 +2,7 @@ import { BlockedTerm } from "src/database/entities/blocked-term";
 import { Poll } from "src/database/entities/poll";
 import { Server } from "src/database/entities/server";
 import { ServerMember } from "src/database/entities/server-member";
+import { SupportTicket } from "src/database/entities/support-ticket";
 import { env, PromiseOr } from "src/util";
 import { DataSource, EntityTarget, FindOptionsWhere } from "typeorm";
 
@@ -13,7 +14,7 @@ export const dataSource = new DataSource({
   username: env("POSTGRES_USER", "vreiheit"),
   password: env("POSTGRES_PASSWORD", "vreiheit"),
   synchronize: true,
-  entities: [BlockedTerm, Server, ServerMember, Poll],
+  entities: [BlockedTerm, Server, ServerMember, Poll, SupportTicket],
   migrations: [],
   subscribers: [],
 });

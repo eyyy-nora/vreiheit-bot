@@ -1,5 +1,6 @@
 import { BlockedTerm } from "src/database/entities/blocked-term";
 import { Server } from "src/database/entities/server";
+import { SupportTicket } from "src/database/entities/support-ticket";
 import {
   Column,
   CreateDateColumn,
@@ -61,4 +62,10 @@ export class ServerMember {
 
   @ManyToOne(() => Server, ({ members }) => members)
   guild!: Server;
+
+  @OneToMany(() => SupportTicket, ({ author }) => author)
+  tickets!: SupportTicket[];
+
+  @OneToMany(() => SupportTicket, ({ assigned }) => assigned)
+  assignedTickets!: SupportTicket[];
 }

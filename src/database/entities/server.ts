@@ -1,6 +1,7 @@
 import { BlockedTerm } from "src/database/entities/blocked-term";
 import { Poll } from "src/database/entities/poll";
 import { ServerMember } from "src/database/entities/server-member";
+import { SupportTicket } from "src/database/entities/support-ticket";
 import {
   Column,
   CreateDateColumn,
@@ -66,6 +67,12 @@ export class Server {
   @Column("varchar", { nullable: true })
   rulesChannelId?: string;
 
+  @Column("varchar", { nullable: true })
+  supportChannelId?: string;
+
+  @Column("varchar", { nullable: true })
+  supportChannelType?: string;
+
   @Column("varchar", {
     transformer: {
       to: value => (value ? value.join(";") : ""),
@@ -89,4 +96,7 @@ export class Server {
 
   @OneToMany(() => Poll, ({ guild }) => guild)
   polls!: Poll[];
+
+  @OneToMany(() => SupportTicket, ({ guild }) => guild)
+  tickets!: SupportTicket[];
 }
