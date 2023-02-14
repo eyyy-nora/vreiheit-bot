@@ -4,7 +4,6 @@ import {
   ButtonInteraction,
   ButtonStyle,
   CategoryChannel,
-  OverwriteType,
   ChannelType,
   Client,
   CommandInteraction,
@@ -18,8 +17,6 @@ import {
   TextBasedChannel,
   TextInputBuilder,
   TextInputStyle,
-  PermissionOverwriteManager,
-  PermissionOverwrites,
   TextChannel,
   EmbedBuilder,
 } from "discord.js";
@@ -42,6 +39,9 @@ import { sleep } from "src/util";
 
 @Handler("support")
 export class SupportService {
+  personalLimit = 2;
+  serverLimit = 25;
+
   @OnInit()
   async onInit(client: Client<true>) {
     await ensureCommand(
@@ -188,12 +188,20 @@ Ich habe einen Fehler gefunden...`),
       author: { discordId: form.member.user.id },
       status: "open",
     });
-    if (ticketCount > 5) {
+    if (ticketCount > this.personalLimit)
       return await form.editReply({
-        content:
-          "Du kannst nicht mehr als 5 Support Anfragen gleichzeitig eröffnen.",
+        content: `Du kannst nicht mehr als ${this.personalLimit} Support Anfragen gleichzeitig eröffnen.`,
       });
-    }
+
+    const totalCount = await repo.countBy({
+      guild: { discordId: form.guildId },
+      status: "open",
+    });
+    if (totalCount > this.serverLimit)
+      return form.editReply({
+        content: `Es sind bereits zu viele Supportanfragen offen! Bitte lasse dir etwas Zeit oder wende dich direkt an die Moderation.`,
+      });
+
     const ticket = repo.create({
       guild: server,
       author: member,
