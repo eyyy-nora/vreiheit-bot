@@ -105,7 +105,7 @@ export class ModHelpService {
 
     const message = [
       `Liebe <@&${modRoleId}>,`,
-      `Die/Der Nutzer*in ${user} benötigt im Kanal ${channel} Hilfe!`,
+      `Die/Der Nutzer\\*in ${user} benötigt im Kanal ${channel} Hilfe!`,
       voice ? `Voice Kanal: ${voice.url}` : undefined,
       reason ? `Grund: ${reason}` : undefined,
     ].filter(it => it);

@@ -30,7 +30,6 @@ import { getSingleCached } from "src/util/caches";
 
 @Handler("poll")
 export class PollingService {
-  polls: Record<string, Poll[]> = {};
   @OnInit()
   async onInit(client: Client<true>) {
     await ensureCommand(
@@ -108,14 +107,12 @@ export class PollingService {
     );
 
     for (const guild of client.guilds.cache.values()) {
-      const polls = (this.polls[guild.id] = await dataSource
-        .getRepository(Poll)
-        .find({
-          where: {
-            closed: false,
-            guild: { discordId: guild.id },
-          },
-        }));
+      const polls = await dataSource.getRepository(Poll).find({
+        where: {
+          closed: false,
+          guild: { discordId: guild.id },
+        },
+      });
       this.schedulePolls(guild, ...polls);
     }
   }
@@ -199,7 +196,6 @@ export class PollingService {
     await message.edit({
       components: this.buildOptionButtons(poll),
     });
-    this.polls[form.guildId].push(poll);
     this.schedulePolls(form.guild, poll);
   }
 
