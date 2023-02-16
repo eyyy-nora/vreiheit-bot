@@ -28,7 +28,7 @@ export class ManagedMessageService {
   }
 
   getManagedMessage(guild: Guild | string, id: string) {
-    return this.messages[typeof guild === "string" ? guild : guild.id].find(
+    return this.messages[typeof guild === "string" ? guild : guild.id]?.find(
       it => it.id === id || it.tag === id,
     );
   }
