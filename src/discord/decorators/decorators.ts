@@ -1,4 +1,9 @@
-import { Interaction, InteractionType, PermissionResolvable } from "discord.js";
+import {
+  AutocompleteInteraction,
+  Interaction,
+  InteractionType,
+  PermissionResolvable,
+} from "discord.js";
 import { HandlerMap } from "src/discord/decorators/handler";
 import { getMeta } from "src/discord/decorators/meta";
 import { PromiseOr } from "src/util";
@@ -20,6 +25,21 @@ export function OnCommand(commandId?: string) {
 
 export function OnFormSubmit(formId?: string) {
   return createInteractionDecorator(InteractionType.ModalSubmit, formId);
+}
+
+export function OnAutocomplete(command: string, option?: string) {
+  return interactionDecorator(
+    i => {
+      if (!i.isAutocomplete()) return false;
+      if (i.commandName !== command) return false;
+      if (option) return i.options.data.find(it => it.focused).name === option;
+      else return true;
+    },
+    i => [
+      (i as AutocompleteInteraction).options.data.find(it => it.focused),
+      (i as AutocompleteInteraction).options.getFocused(),
+    ],
+  );
 }
 
 export function OnMemberJoin() {
@@ -88,6 +108,22 @@ export function createHandlerDecorator<Key extends keyof HandlerMap>(
   };
 }
 
+export function interactionDecorator(
+  filter: (interaction: Interaction) => unknown,
+  prepareParams?: (interaction: Interaction) => any[],
+) {
+  return function (proto: any, name: string | symbol) {
+    getMeta(proto.constructor).handlers.interaction.push(async function (
+      this: any,
+      interaction: Interaction,
+    ) {
+      if (!filter(interaction)) return;
+      const params = prepareParams ? prepareParams(interaction) : [];
+      return this[name].call(this, interaction, ...params);
+    });
+  };
+}
+
 export function createInteractionDecorator<Type extends Interaction>(
   type: Type["type"] | ((interaction: Type) => boolean),
   id?: string,
@@ -104,6 +140,9 @@ export function createInteractionDecorator<Type extends Interaction>(
       )
         return;
       if (interaction.isCommand()) {
+        if (interaction.commandName !== id) return;
+        return this[name].call(this, interaction);
+      } else if (interaction.isAutocomplete()) {
         if (interaction.commandName !== id) return;
         return this[name].call(this, interaction);
       }

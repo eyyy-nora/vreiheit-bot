@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AutocompleteInteraction,
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
@@ -16,6 +17,7 @@ import {
   Handler,
   HasPermission,
   InjectService,
+  OnAutocomplete,
   OnButton,
   OnCommand,
   OnInit,
@@ -61,7 +63,7 @@ export class InterestsService {
         .addRoleOption(opt =>
           opt
             .setName("role")
-            .setDescription("Zogeordnete Rolle")
+            .setDescription("Zugeordnete Rolle")
             .setRequired(false),
         ),
     );
@@ -71,6 +73,52 @@ export class InterestsService {
         .setName("show-interest-options")
         .setDMPermission(false)
         .setDescription("Poste die Optionen für mögliche Interessen"),
+    );
+    await ensureCommand(
+      client,
+      new SlashCommandBuilder()
+        .setName("edit-interest")
+        .setDMPermission(false)
+        .setDescription("Bearbeite Interessensoptionen")
+        .addStringOption(opt =>
+          opt
+            .setName("tag")
+            .setDescription("Identifikation der Interessensoption")
+            .setRequired(true)
+            .setAutocomplete(true),
+        )
+        .addStringOption(opt =>
+          opt
+            .setName("name")
+            .setDescription("Name der Interessensoption")
+            .setRequired(false),
+        )
+        .addStringOption(opt =>
+          opt
+            .setName("description")
+            .setDescription("Beschreibung der Interessensoption")
+            .setRequired(false),
+        )
+        .addRoleOption(opt =>
+          opt
+            .setName("role")
+            .setDescription("Zugeordnete Rolle")
+            .setRequired(false),
+        ),
+    );
+    await ensureCommand(
+      client,
+      new SlashCommandBuilder()
+        .setName("delete-interest")
+        .setDMPermission(false)
+        .setDescription("Lösche Interessensoptionen")
+        .addStringOption(opt =>
+          opt
+            .setName("tag")
+            .setDescription("Identifikation der Interessensoption")
+            .setRequired(true)
+            .setAutocomplete(true),
+        ),
     );
   }
 
@@ -90,6 +138,60 @@ export class InterestsService {
 
     await this.updateInterests(cmd.guild, interests);
     await cmd.editReply({ content: "Interesse Erstellt" });
+  }
+
+  @OnAutocomplete("edit-interest", "tag")
+  @OnAutocomplete("delete-interest", "tag")
+  async onAutocompleteTag(
+    auto: AutocompleteInteraction,
+    option: any,
+    value: string,
+  ) {
+    const options = await this.interests(auto.guildId);
+    const filtered = Object.values(options)
+      .filter(
+        it =>
+          it.tag.includes(value) ||
+          it.name.includes(value) ||
+          it.description?.includes(value),
+      )
+      .map(({ name, tag }) => ({ name, value: tag }));
+    await auto.respond(filtered);
+  }
+
+  @OnCommand("edit-interest")
+  @HasPermission("Administrator")
+  async onEditInterest(cmd: CommandInteraction) {
+    const tag = cmd.options.get("tag").value as string;
+    const name = cmd.options.get("name")?.value as string;
+    const description = cmd.options.get("description")?.value as string;
+    const roleId = cmd.options.get("role")?.role?.id;
+
+    const interests = await this.interests(cmd.guild.id);
+    const before = interests[tag];
+    if (name) before.name = name;
+    if (description) before.description = description;
+    if (roleId) before.roleId = roleId;
+
+    await withResource(Server, { discordId: cmd.guildId }, server => {
+      server.interests = { ...interests };
+    });
+
+    await this.updateInterests(cmd.guild, interests);
+    await cmd.editReply({ content: "Interesse Bearbeitet" });
+  }
+
+  @OnCommand("delete-interest")
+  @HasPermission("Administrator")
+  async onDeleteInterest(cmd: CommandInteraction) {
+    const tag = cmd.options.get("tag").value as string;
+    await withResource(Server, { discordId: cmd.guildId }, server => {
+      delete server.interests[tag];
+      server.interests = { ...server.interests };
+    });
+    const interests = await this.interests(cmd.guild.id);
+    await this.updateInterests(cmd.guild, interests);
+    await cmd.editReply({ content: "Interesse Gelöscht" });
   }
 
   @OnCommand("show-interest-options")
