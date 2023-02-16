@@ -111,7 +111,7 @@ export class InterestsService {
     const member = btn.member as GuildMember;
     await withServerMember(member, member => {
       on = !member.interests[tag];
-      member.interests[tag] = on;
+      member.interests = { ...member.interests, [tag]: on };
     });
     if (roleId)
       if (on) await member.roles.add(roleId);
