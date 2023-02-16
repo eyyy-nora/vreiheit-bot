@@ -57,6 +57,11 @@ export class ServerMember {
   @Column("boolean", { default: false })
   suspect!: boolean;
 
+  @Column("jsonb", { default: {} })
+  interests: {
+    debate?: boolean;
+  };
+
   @OneToMany(() => BlockedTerm, ({ author }) => author)
   blockedTerms!: BlockedTerm[];
 

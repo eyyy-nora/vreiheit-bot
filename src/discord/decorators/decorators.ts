@@ -1,4 +1,4 @@
-import { Interaction, InteractionType } from "discord.js";
+import { Interaction, InteractionType, PermissionResolvable } from "discord.js";
 import { HandlerMap } from "src/discord/decorators/handler";
 import { getMeta } from "src/discord/decorators/meta";
 import { PromiseOr } from "src/util";
@@ -146,5 +146,36 @@ export function filterByInteractionType(type: InteractionType, id?: string) {
   const idFilter = id ? filterById(id) : () => true;
   return function (this: any, interaction: Interaction) {
     return interaction.type === type && idFilter.call(this, interaction);
+  };
+}
+
+export function HasPermission(
+  permission: PermissionResolvable,
+  checkAdmin?: boolean,
+) {
+  return function (
+    proto: any,
+    propertyKey: string | symbol,
+    desc: PropertyDescriptor,
+  ) {
+    const orig = desc.value as any;
+    desc.value = async function (this: any, ...params: any[]) {
+      const interaction = params[0] as Interaction;
+      if ("deferReply" in interaction)
+        await interaction.deferReply({ ephemeral: true });
+      if ("memberPermissions" in interaction) {
+        if (!interaction.memberPermissions.has(permission, checkAdmin)) {
+          if ((interaction as any).deferred)
+            return await (interaction as any).editReply({
+              content: "Du hast nicht die Berechtigung, dies zu tun",
+            });
+          else
+            return await (interaction as any).reply({
+              content: "Du hast nicht die Berechtigung, dies zu tun",
+            });
+        }
+        return await orig.call(this, ...params);
+      }
+    };
   };
 }

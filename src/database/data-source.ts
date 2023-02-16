@@ -1,4 +1,5 @@
 import { BlockedTerm } from "src/database/entities/blocked-term";
+import { ManagedMessage } from "src/database/entities/managed-message";
 import { Poll } from "src/database/entities/poll";
 import { Server } from "src/database/entities/server";
 import { ServerMember } from "src/database/entities/server-member";
@@ -14,7 +15,14 @@ export const dataSource = new DataSource({
   username: env("POSTGRES_USER", "vreiheit"),
   password: env("POSTGRES_PASSWORD", "vreiheit"),
   synchronize: true,
-  entities: [BlockedTerm, Server, ServerMember, Poll, SupportTicket],
+  entities: [
+    BlockedTerm,
+    Server,
+    ServerMember,
+    Poll,
+    SupportTicket,
+    ManagedMessage,
+  ],
   migrations: [],
   subscribers: [],
 });

@@ -1,4 +1,5 @@
 import { BlockedTerm } from "src/database/entities/blocked-term";
+import { ManagedMessage } from "src/database/entities/managed-message";
 import { Poll } from "src/database/entities/poll";
 import { ServerMember } from "src/database/entities/server-member";
 import { SupportTicket } from "src/database/entities/support-ticket";
@@ -73,6 +74,12 @@ export class Server {
   @Column("varchar", { nullable: true })
   supportChannelType?: string;
 
+  @Column("jsonb", { default: {} })
+  interests: Record<
+    string,
+    { roleId?: string; name: string; description: string; tag: string }
+  >;
+
   @Column("varchar", {
     transformer: {
       to: value => (value ? value.join(";") : ""),
@@ -99,4 +106,7 @@ export class Server {
 
   @OneToMany(() => SupportTicket, ({ guild }) => guild)
   tickets!: SupportTicket[];
+
+  @OneToMany(() => ManagedMessage, ({ guild }) => guild)
+  managedMessages!: ManagedMessage[];
 }

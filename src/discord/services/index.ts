@@ -11,3 +11,4 @@ export * from "./global-slowmode";
 export * from "./polling";
 export * from "./mod-help";
 export * from "./support";
+export * from "./interests";
