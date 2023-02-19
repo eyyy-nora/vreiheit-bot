@@ -94,7 +94,6 @@ export class RulesService {
   @HasPermission("Administrator")
   async onShowRules(interaction: CommandInteraction) {
     const text = await this.messages.getContent(interaction.guild, "rules");
-    await interaction.deleteReply();
     await this.messages.replaceMessage(
       interaction.guild,
       interaction.channel,
