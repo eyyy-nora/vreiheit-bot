@@ -71,7 +71,6 @@ export class RulesService {
   }
 
   @OnCommand("edit-rules")
-  @HasPermission("Administrator")
   async onEditRules(interaction: CommandInteraction) {
     const text = await this.messages.getContent(interaction.guild, "rules");
     await interaction.showModal(
