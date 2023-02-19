@@ -1,5 +1,6 @@
 import {
   Client,
+  EmbedBuilder,
   Guild,
   MessageCreateOptions,
   MessageEditOptions,
@@ -33,14 +34,18 @@ export class ManagedMessageService {
     );
   }
 
-  async getOrCreateManagedMessage(guild: Guild | string, id: string) {
+  async getOrCreateManagedMessage(
+    guild: Guild | string,
+    id: string,
+    type: "content" | "embed" = "content",
+  ) {
     const guildId = typeof guild === "string" ? guild : guild.id;
     const match = this.messages[guildId].find(
       it => it.id === id || it.tag === id,
     );
     if (match) return match;
     const server = await getServer(guildId);
-    return this.repo.create({ guild: server, tag: id });
+    return this.repo.create({ guild: server, tag: id, type });
   }
 
   getContent(guild: Guild | string, id: string) {
@@ -50,10 +55,11 @@ export class ManagedMessageService {
     guild: Guild,
     id: string,
     content: MessageEditOptions | string,
+    type: "content" | "embed" = "content",
   ) {
-    if (typeof content === "string") content = { content };
-    const message = await this.getOrCreateManagedMessage(guild, id);
-    message.content = content.content;
+    const message = await this.getOrCreateManagedMessage(guild, id, type);
+    content = this.normaliseContent(message, content);
+    message.content = this.content(content);
     if (message.channelId && message.messageId) {
       const channel = (await guild.channels.fetch(
         message.channelId,
@@ -69,8 +75,9 @@ export class ManagedMessageService {
     channel: string | TextBasedChannel,
     id: string,
     content: MessageCreateOptions | string,
+    type: "content" | "embed" = "content",
   ) {
-    if (typeof content === "string") content = { content };
+    content = this.normaliseContent({ type } as ManagedMessage, content);
     if (typeof channel === "string")
       channel = (await guild.channels.fetch(channel)) as TextBasedChannel;
     const server = await getServer(guild.id);
@@ -79,6 +86,7 @@ export class ManagedMessageService {
       channelId: channel.id,
       guild: server,
       tag: id,
+      type,
     });
     const { id: messageId } = await channel.send(content);
     message.messageId = messageId;
@@ -94,7 +102,7 @@ export class ManagedMessageService {
   ) {
     const message = this.getManagedMessage(guild.id, id);
     if (!message) return this.createMessage(guild, channel, id, content!);
-    if (typeof content === "string") content = { content };
+    content = this.normaliseContent(message, content);
     if (typeof channel === "string")
       channel = (await guild.channels.fetch(channel)) as TextBasedChannel;
     if (message.channelId && message.messageId) {
@@ -107,9 +115,32 @@ export class ManagedMessageService {
       const prevMessage = await prevChannel?.messages?.fetch(message.messageId);
       await prevMessage?.delete();
     }
-    message.content = content.content;
+    message.content = this.content(content);
     const { id: messageId } = await channel.send(content);
     message.messageId = messageId;
+    message.channelId = channel.id;
     await this.repo.save(message);
+  }
+
+  normaliseContent(
+    message: ManagedMessage,
+    content: string | MessageEditOptions | MessageCreateOptions,
+  ): MessageEditOptions {
+    return typeof content === "string"
+      ? message.type === "content"
+        ? { content }
+        : { embeds: [new EmbedBuilder().setDescription(content)] }
+      : content;
+  }
+
+  content(message: Partial<MessageEditOptions>) {
+    if (message.content) return message.content;
+    if (message.embeds)
+      if (!message.embeds.length) return "";
+      else if ("data" in message.embeds[0])
+        return (message.embeds[0].data as any).description;
+      else if ("description" in message.embeds[0])
+        return message.embeds[0].description;
+    return "";
   }
 }

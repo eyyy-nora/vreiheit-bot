@@ -59,14 +59,8 @@ export class Server {
   @Column("varchar", { nullable: true })
   hierarchy?: string;
 
-  @Column("varchar", { nullable: true })
-  rules?: string;
-
   @Column("jsonb", { default: {} })
   pronouns!: Record<string, string> & { other: string[] };
-
-  @Column("varchar", { nullable: true })
-  rulesChannelId?: string;
 
   @Column("varchar", { nullable: true })
   supportChannelId?: string;
@@ -79,15 +73,6 @@ export class Server {
     string,
     { roleId?: string; name: string; description: string; tag: string }
   >;
-
-  @Column("varchar", {
-    transformer: {
-      to: value => (value ? value.join(";") : ""),
-      from: value => (value ? value.split(";") : []),
-    },
-    nullable: true,
-  })
-  rulesMessageIds!: string[];
 
   @CreateDateColumn()
   createdAt!: Date;

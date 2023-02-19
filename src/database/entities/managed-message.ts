@@ -13,7 +13,7 @@ export class ManagedMessage {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column("varchar")
+  @Column("varchar", { nullable: true })
   content!: string;
 
   @Column("varchar", { nullable: true })
@@ -24,6 +24,9 @@ export class ManagedMessage {
 
   @Column("varchar", { nullable: true })
   channelId!: string;
+
+  @Column("varchar", { default: "content" })
+  type!: "content" | "embed";
 
   @CreateDateColumn()
   createdAt!: Date;

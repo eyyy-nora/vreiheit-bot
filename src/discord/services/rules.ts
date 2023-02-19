@@ -5,34 +5,31 @@ import {
   ButtonStyle,
   Client,
   CommandInteraction,
-  Guild,
+  EmbedBuilder,
   ModalBuilder,
   ModalSubmitInteraction,
   SlashCommandBuilder,
-  TextBasedChannel,
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
 import { ensureCommand } from "src/discord/commands/ensure-command";
 import {
   Handler,
+  HasPermission,
+  InjectService,
   OnButton,
   OnCommand,
   OnFormSubmit,
   OnInit,
 } from "src/discord/decorators";
-import { Server } from "src/database/entities/server";
-import { withResource } from "src/database/data-source";
-import {
-  getServer,
-  withServer,
-  withServerMember,
-} from "src/discord/members/get-server-member";
-import { editMessage } from "src/discord/messages";
-import { chunks } from "src/util";
+import { withServerMember } from "src/discord/members/get-server-member";
+import { ManagedMessageService } from "src/discord/services/managed-message";
 
 @Handler("rules")
 export class RulesService {
+  @InjectService(() => ManagedMessageService)
+  messages!: ManagedMessageService;
+
   @OnInit()
   async onInit(client: Client<true>) {
     await ensureCommand(
@@ -62,103 +59,58 @@ export class RulesService {
   }
 
   @OnFormSubmit("edit")
+  @HasPermission("Administrator")
   async onRulesEdit(form: ModalSubmitInteraction) {
-    if (!form.memberPermissions.has("Administrator")) return;
-    await form.deferUpdate();
-    const text1 = form.fields.getTextInputValue("text1");
-    const text2 = form.fields.getTextInputValue("text2");
-    const text3 = form.fields.getTextInputValue("text3");
-    const text4 = form.fields.getTextInputValue("text4");
-    const text5 = form.fields.getTextInputValue("text5");
-    const fullText = [text1, text2, text3, text4, text5].join("\n");
-    await withServer(form.guildId, server => {
-      server.rules = fullText.trim();
-    });
-    await this.editRulesMessages(form.guild);
+    await form.deleteReply();
+    await this.messages.editMessage(
+      form.guild,
+      "rules",
+      form.fields.getTextInputValue("text"),
+      "embed",
+    );
   }
 
   @OnCommand("edit-rules")
+  @HasPermission("Administrator")
   async onEditRules(interaction: CommandInteraction) {
-    const ruleTexts = await this.getRuleTexts(interaction.guildId);
+    const text = await this.messages.getContent(interaction.guild, "rules");
     await interaction.showModal(
       new ModalBuilder()
         .setTitle("Regeln bearbeiten")
         .setCustomId("rules:edit")
         .setComponents(
-          ruleTexts.map((text, index) =>
-            new ActionRowBuilder<TextInputBuilder>().setComponents(
-              new TextInputBuilder()
-                .setLabel(`Regeln ${index + 1}`)
-                .setValue(text)
-                .setCustomId(`text${index + 1}`)
-                .setStyle(TextInputStyle.Paragraph)
-                .setRequired(index === 0),
-            ),
+          new ActionRowBuilder<TextInputBuilder>().setComponents(
+            new TextInputBuilder()
+              .setLabel(`Regeln`)
+              .setValue(text)
+              .setCustomId(`text`)
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(true),
           ),
         ),
     );
   }
 
   @OnCommand("show-rules")
+  @HasPermission("Administrator")
   async onShowRules(interaction: CommandInteraction) {
-    if (!interaction.memberPermissions.has("Administrator")) return;
-    await interaction.deferReply({ ephemeral: true });
+    const text = await this.messages.getContent(interaction.guild, "rules");
     await interaction.deleteReply();
-    let ruleTexts = await this.getRuleTexts(interaction.guildId);
-    ruleTexts = ruleTexts.filter(it => it);
-    await this.createRulesMessages(
-      interaction.channel,
+    await this.messages.replaceMessage(
       interaction.guild,
-      ruleTexts,
+      interaction.channel,
+      "rules",
+      {
+        embeds: [new EmbedBuilder().setDescription(text)],
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setLabel("Akzeptieren")
+              .setStyle(ButtonStyle.Success)
+              .setCustomId("rules:accept"),
+          ),
+        ],
+      },
     );
-  }
-
-  async editRulesMessages(guild: Guild) {
-    const server = await getServer(guild.id);
-    const rules = await this.getRuleTexts(guild.id, false);
-    if (server.rulesMessageIds.length !== rules.length) {
-      console.error("rules message length mismatch");
-      // TODO: later ;)
-    } else {
-      for (let i = 0; i < rules.length; ++i) {
-        const messageId = server.rulesMessageIds[i];
-        await editMessage(guild, server.rulesChannelId, messageId, rules[i]);
-      }
-    }
-  }
-
-  async createRulesMessages(
-    channel: TextBasedChannel,
-    guild: Guild,
-    rules: string[],
-  ) {
-    const messageIds: string[] = [];
-
-    for (const text of rules) {
-      const message = await channel.send({ content: text });
-      messageIds.push(message.id);
-    }
-
-    await editMessage(guild, channel, messageIds[messageIds.length - 1], {
-      components: [
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setLabel("Akzeptieren")
-            .setStyle(ButtonStyle.Success)
-            .setCustomId("rules:accept"),
-        ),
-      ],
-    });
-
-    await withResource(Server, { discordId: guild.id }, server => {
-      server.rulesChannelId = channel.id;
-      server.rulesMessageIds = messageIds;
-    });
-  }
-
-  async getRuleTexts(id: string, fillEmpty = true): Promise<string[]> {
-    const ruleTexts = chunks<string>((await getServer(id)).rules ?? "", 4000);
-    if (fillEmpty) while (ruleTexts.length < 5) ruleTexts.push("");
-    return ruleTexts;
   }
 }
