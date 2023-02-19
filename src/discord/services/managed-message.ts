@@ -89,9 +89,18 @@ export class ManagedMessageService {
     });
   }
 
-  getManagedMessage(guild: Guild | string, id: string) {
-    return this.messages[typeof guild === "string" ? guild : guild.id]?.find(
-      it => it.id === id || it.tag === id,
+  async getManagedMessage(guild: Guild | string, id: string) {
+    return (
+      this.messages[typeof guild === "string" ? guild : guild.id]?.find(
+        it => it.id === id || it.tag === id,
+      ) ??
+      (await this.repo.findOne({
+        where: {
+          guild: { discordId: typeof guild === "string" ? guild : guild.id },
+          tag: id,
+        },
+        select: { content: true },
+      }))
     );
   }
 
@@ -109,8 +118,8 @@ export class ManagedMessageService {
     return this.repo.create({ guild: server, tag: id, type });
   }
 
-  getContent(guild: Guild | string, id: string) {
-    return this.getManagedMessage(guild, id)?.content || "";
+  async getContent(guild: Guild | string, id: string) {
+    return (await this.getManagedMessage(guild, id))?.content || "";
   }
   async editMessage(
     guild: Guild,
@@ -161,7 +170,7 @@ export class ManagedMessageService {
     id: string,
     content?: MessageEditOptions | string,
   ) {
-    const message = this.getManagedMessage(guild.id, id);
+    const message = await this.getManagedMessage(guild.id, id);
     if (!message) return this.createMessage(guild, channel, id, content!);
     content = this.normaliseContent(message, content);
     if (typeof channel === "string")
