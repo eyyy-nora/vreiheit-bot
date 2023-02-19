@@ -99,7 +99,6 @@ export class ManagedMessageService {
           guild: { discordId: typeof guild === "string" ? guild : guild.id },
           tag: id,
         },
-        select: { content: true },
       }))
     );
   }
