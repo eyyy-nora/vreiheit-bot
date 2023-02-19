@@ -167,14 +167,20 @@ export class ManagedMessageService {
     if (typeof channel === "string")
       channel = (await guild.channels.fetch(channel)) as TextBasedChannel;
     if (message.channelId && message.messageId) {
-      const prevChannel =
-        message.channelId !== channel.id
-          ? ((await guild.channels.fetch(
-              message.channelId,
-            )) as TextBasedChannel)
-          : channel;
-      const prevMessage = await prevChannel?.messages?.fetch(message.messageId);
-      await prevMessage?.delete();
+      try {
+        const prevChannel =
+          message.channelId !== channel.id
+            ? ((await guild.channels.fetch(
+                message.channelId,
+              )) as TextBasedChannel)
+            : channel;
+        const prevMessage = await prevChannel?.messages?.fetch(
+          message.messageId,
+        );
+        await prevMessage?.delete();
+      } catch (e) {
+        console.error(e);
+      }
     }
     message.content = this.content(content);
     const { id: messageId } = await channel.send(content);
