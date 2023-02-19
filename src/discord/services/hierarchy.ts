@@ -72,19 +72,6 @@ export class HierarchyService {
       client,
       new SlashCommandBuilder()
         .setDMPermission(false)
-        .setName("set-rules-channel")
-        .setDescription("Legt den Regeln-Kanal fest.")
-        .addChannelOption(builder =>
-          builder
-            .setName("channel")
-            .setRequired(true)
-            .setDescription("Regeln-Kanal"),
-        ),
-    );
-    await ensureCommand(
-      client,
-      new SlashCommandBuilder()
-        .setDMPermission(false)
         .setName("set-hierarchy")
         .setDescription("Setzt die Rank-Abfolge fest")
         .addRoleOption(builder =>
@@ -206,17 +193,6 @@ export class HierarchyService {
     const { role } = command.options.get("role", true);
     await withServer(command.guildId, server => {
       server.botRoleId = role.id;
-    });
-  }
-
-  @OnCommand("set-rules-channel")
-  async onSetRulesChannel(command: CommandInteraction) {
-    if (!command.memberPermissions.has("Administrator")) return;
-    await command.deferReply();
-    await command.deleteReply();
-    const { channel } = command.options.get("channel", true);
-    await withServer(command.guildId, server => {
-      server.rulesChannelId = channel.id;
     });
   }
 
