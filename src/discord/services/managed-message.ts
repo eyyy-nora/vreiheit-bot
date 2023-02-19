@@ -4,10 +4,12 @@ import {
   Guild,
   MessageCreateOptions,
   MessageEditOptions,
+  SlashCommandBuilder,
   TextBasedChannel,
 } from "discord.js";
 import { dataSource } from "src/database/data-source";
 import { ManagedMessage } from "src/database/entities/managed-message";
+import { ensureCommand } from "src/discord/commands/ensure-command";
 import { Handler, OnInit } from "src/discord/decorators";
 import { getServer } from "src/discord/members/get-server-member";
 
@@ -21,11 +23,70 @@ export class ManagedMessageService {
 
   @OnInit()
   async onInit(client: Client<true>) {
-    for (const guild of client.guilds.cache.values()) {
-      this.messages[guild.id] = await this.repo.find({
-        where: { guild: { discordId: guild.id } },
-      });
-    }
+    await ensureCommand(
+      client,
+      new SlashCommandBuilder()
+        .setName("managed-message")
+        .setDescription("Verwalte bearbeitbare nachrichten.")
+        .setDMPermission(false)
+        .addSubcommand(cmd =>
+          cmd
+            .setName("refresh")
+            .setDescription(
+              "Lade die bearbeitbaren Nachrichten für diesen Server neu",
+            )
+            .addStringOption(option =>
+              option
+                .setName("tag")
+                .setDescription("Tag der bearbeitbaren Nachricht")
+                .setRequired(false)
+                .setAutocomplete(true),
+            ),
+        )
+        .addSubcommand(cmd =>
+          cmd
+            .setName("get")
+            .setDescription(
+              "Zeige den Inhalt einer bearbeitbaren Nachricht an.",
+            )
+            .addStringOption(option =>
+              option
+                .setName("tag")
+                .setDescription("Tag der bearbeitbaren Nachricht")
+                .setRequired(true)
+                .setAutocomplete(true),
+            ),
+        )
+        .addSubcommand(cmd =>
+          cmd
+            .setName("edit")
+            .setDescription(
+              "Bearbeitet den Inhalt einer bearbeitbaren Nachricht",
+            )
+            .addStringOption(option =>
+              option
+                .setName("tag")
+                .setDescription("Tag der bearbeitbaren Nachricht")
+                .setRequired(true)
+                .setAutocomplete(true),
+            )
+            .addStringOption(option =>
+              option
+                .setName("content")
+                .setDescription("Neuer Inhalt der Nachricht")
+                .setRequired(false),
+            ),
+        ),
+    );
+
+    for (const guild of client.guilds.cache.values())
+      await this.refreshMessages(guild);
+  }
+
+  async refreshMessages(guild: Guild) {
+    this.messages[guild.id] = await this.repo.find({
+      where: { guild: { discordId: guild.id } },
+    });
   }
 
   getManagedMessage(guild: Guild | string, id: string) {
