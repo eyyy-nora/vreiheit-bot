@@ -131,6 +131,9 @@ export class SupportService {
   async onMessageSubmit(form: ModalSubmitInteraction) {
     const content = form.fields.getTextInputValue("content");
     await this.messages.editMessage(form.guild, key, content);
+    return await form.editReply({
+      content: "Nachricht bearbeitet!",
+    });
   }
 
   @OnCommand("support", "channel")
