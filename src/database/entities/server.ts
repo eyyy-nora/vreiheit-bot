@@ -68,6 +68,9 @@ export class Server {
   @Column("varchar", { nullable: true })
   supportChannelType?: string;
 
+  @Column("varchar", { nullable: true })
+  susActivityChannelId?: string;
+
   @Column("jsonb", { default: {} })
   interests: Record<
     string,

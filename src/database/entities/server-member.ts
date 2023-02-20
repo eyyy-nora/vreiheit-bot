@@ -57,6 +57,9 @@ export class ServerMember {
   @Column("boolean", { default: false })
   suspect!: boolean;
 
+  @Column("varchar", { nullable: true })
+  suspectThreadId!: string;
+
   @Column("jsonb", { default: {} })
   interests: {
     debate?: boolean;
