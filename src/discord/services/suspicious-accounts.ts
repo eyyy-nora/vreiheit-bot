@@ -123,7 +123,10 @@ export class SuspiciousAccountsService {
     )) as BaseGuildTextChannel;
 
     const message = await channel.send({
-      content: [`Verdächtiger Account: ${member}`, reason]
+      content: [
+        `Verdächtiger Account: ${member}`,
+        reason ? `Grund: ${reason}` : undefined,
+      ]
         .filter(it => it)
         .join("\n"),
     });
