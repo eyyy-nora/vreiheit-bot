@@ -114,7 +114,7 @@ export class SuspiciousAccountsService {
   async onSusAccountAdd(cmd: CommandInteraction) {
     const user = cmd.options.getUser("user", true);
     const member = cmd.guild.members.cache.get(user.id);
-    const reason = cmd.options.get("reason").value?.toString();
+    const reason = cmd.options.get("reason")?.value?.toString();
 
     const server = await getServer(cmd.guildId);
 
