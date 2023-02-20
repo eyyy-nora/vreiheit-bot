@@ -12,6 +12,7 @@ import {
   GuildTextBasedChannel,
   Message,
   SlashCommandBuilder,
+  ThreadChannel,
 } from "discord.js";
 import { dataSource } from "src/database/data-source";
 import { ServerMember } from "src/database/entities/server-member";
@@ -122,20 +123,34 @@ export class SuspiciousAccountsService {
       server.susActivityChannelId,
     )) as BaseGuildTextChannel;
 
-    const message = await channel.send({
-      content: [
-        `Verdächtiger Account: ${member}`,
-        reason ? `Grund: ${reason}` : undefined,
-      ]
-        .filter(it => it)
-        .join("\n"),
-    });
+    let thread = await this.getThread(member);
 
-    const thread = await channel.threads.create({
-      name: `Verdächtiger Account: ${member.displayName}`,
-      type: ChannelType.GuildPublicThread,
-      startMessage: message,
-    });
+    if (!thread) {
+      const message = await channel.send({
+        content: [
+          `Verdächtiger Account: ${member}`,
+          reason ? `Grund: ${reason}` : undefined,
+        ]
+          .filter(it => it)
+          .join("\n"),
+      });
+
+      thread = await channel.threads.create({
+        name: `Verdächtiger Account: ${member.displayName}`,
+        type: ChannelType.GuildPublicThread,
+        startMessage: message,
+      });
+    } else if (thread.archived) {
+      await thread.setArchived(false);
+      await thread.send({
+        content: [
+          `${member} ist wieder als verdächtig markiert.`,
+          reason ? `Grund: ${reason}` : undefined,
+        ]
+          .filter(it => it)
+          .join("\n"),
+      });
+    }
 
     await withServerMember(member, member => {
       member.suspect = true;
@@ -143,7 +158,7 @@ export class SuspiciousAccountsService {
     });
     this.susAccounts[cmd.guildId].push(user.id);
     await cmd.editReply({
-      content: `${member} wurde als verdächtig markiert!`,
+      content: `${member} wurde als verdächtig markiert.`,
     });
   }
 
@@ -159,8 +174,14 @@ export class SuspiciousAccountsService {
     const index = accs.indexOf(user.id);
     if (index !== -1) accs.splice(index, 1);
     await cmd.editReply({
-      content: `${member} ist nicht mehr als verdächtig markiert!`,
+      content: `${member} ist nicht mehr als verdächtig markiert.`,
     });
+
+    const thread = await this.getThread(member);
+    await thread.send({
+      content: `${member} ist nicht mehr als verdächtig markiert.`,
+    });
+    await thread.setArchived(true);
   }
 
   @OnCommand("sus", "channel")
@@ -232,10 +253,14 @@ export class SuspiciousAccountsService {
   }
 
   async getThread(member: GuildMember) {
-    const data = await getServerMember(member);
-    return (await member.guild.channels.fetch(
-      data.suspectThreadId,
-    )) as GuildTextBasedChannel;
+    try {
+      const data = await getServerMember(member);
+      return (await member.guild.channels.fetch(
+        data.suspectThreadId,
+      )) as ThreadChannel;
+    } catch {
+      /* ignore */
+    }
   }
 
   buildMessageActionRow(message: Message) {
