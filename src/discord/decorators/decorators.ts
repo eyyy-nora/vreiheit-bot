@@ -16,11 +16,16 @@ export function OnButton(buttonId: string) {
   return createInteractionDecorator(i => i.isButton(), buttonId);
 }
 
-export function OnCommand(commandId?: string) {
-  return createInteractionDecorator(
-    InteractionType.ApplicationCommand,
-    commandId,
-  );
+export function OnCommand(commandId?: string, subcommandId?: string) {
+  return interactionDecorator(i => {
+    if (!i.isCommand()) return false;
+    if (commandId && i.commandName !== commandId) return false;
+    if (subcommandId) {
+      if (!("getSubcommand" in i.options)) return false;
+      if (i.options.getSubcommand(true) !== subcommandId) return false;
+    }
+    return true;
+  });
 }
 
 export function OnFormSubmit(formId?: string) {

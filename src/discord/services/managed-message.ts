@@ -187,7 +187,7 @@ export class ManagedMessageService {
         );
         await prevMessage?.delete();
       } catch (e) {
-        console.error(e);
+        /* ignore */
       }
     }
     message.content = this.content(content);

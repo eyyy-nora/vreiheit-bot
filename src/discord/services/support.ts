@@ -19,6 +19,7 @@ import {
   TextInputStyle,
   TextChannel,
   EmbedBuilder,
+  GuildTextBasedChannel,
 } from "discord.js";
 import { dataSource, withResource } from "src/database/data-source";
 import { Server } from "src/database/entities/server";
@@ -26,6 +27,8 @@ import { SupportTicket } from "src/database/entities/support-ticket";
 import { ensureCommand } from "src/discord/commands/ensure-command";
 import {
   Handler,
+  HasPermission,
+  InjectService,
   OnButton,
   OnCommand,
   OnFormSubmit,
@@ -35,12 +38,17 @@ import {
   getServer,
   getServerMember,
 } from "src/discord/members/get-server-member";
+import { ManagedMessageService } from "src/discord/services/managed-message";
 import { sleep } from "src/util";
 
+const key = "support-create-ticket-message";
 @Handler("support")
 export class SupportService {
   personalLimit = 2;
   serverLimit = 25;
+
+  @InjectService(() => ManagedMessageService)
+  messages!: ManagedMessageService;
 
   @OnInit()
   async onInit(client: Client<true>) {
@@ -48,58 +56,64 @@ export class SupportService {
       client,
       new SlashCommandBuilder()
         .setDMPermission(false)
-        .setName("set-support-channel")
-        .setDescription("Support Kanal festlegen")
-        .addChannelOption(option =>
-          option
+        .setName("support")
+        .setDescription("Verwalte den Support-Bereich")
+        .addSubcommand(cmd =>
+          cmd
+            .setName("message")
+            .setDescription("Bearbeite die 'Neue Ticket Erstellen' Nachricht.")
+            .addStringOption(opt =>
+              opt
+                .setName("content")
+                .setDescription("Inhalt der Nachricht")
+                .setRequired(true),
+            ),
+        )
+        .addSubcommand(cmd =>
+          cmd
             .setName("channel")
-            .setDescription(
-              "Die Channel Gruppe oder der Forum Kanal, der für Supportanfragen eingerichtet werden soll.",
-            )
-            .setRequired(true),
+            .setDescription("Lege die Kanal-Kategorie für Supportanfragen fest")
+            .addChannelOption(opt =>
+              opt
+                .setName("channel")
+                .setDescription("Die Kanal-Kategorie für den Support")
+                .setRequired(true)
+                .addChannelTypes(ChannelType.GuildCategory),
+            ),
         ),
     );
   }
 
-  @OnCommand("set-support-channel")
-  async onSetSupportChannel(command: CommandInteraction) {
-    await command.deferReply({ ephemeral: true });
-    if (!command.memberPermissions.has("Administrator"))
+  @OnCommand("support", "message")
+  @HasPermission("Administrator")
+  async onSupportMessageUpdate(command: CommandInteraction) {
+    const content = command.options.get("content")?.value?.toString()?.trim();
+    if (!content)
       return await command.editReply({
-        content: "Du hast keine Berechtigung, dies zu tun.",
-      });
-    const channel = command.options.get("channel").channel as GuildBasedChannel;
-
-    if (
-      ![ChannelType.GuildForum, ChannelType.GuildCategory].includes(
-        channel.type,
-      )
-    )
-      return await command.editReply({
-        content: "Bitte wähle eine Kanalkategorie oder einen Foren-Kanal aus.",
+        content: "Du musst einen Text mitgeben!",
       });
 
-    await this.initialiseSupportChannel(channel as any);
+    await this.messages.editMessage(command.guild, key, content);
 
-    await withResource(Server, { discordId: command.guildId }, server => {
-      server.supportChannelId = channel.id;
-      server.supportChannelType =
-        channel.type === ChannelType.GuildForum ? "forum" : "text";
-    });
     await command.editReply({
-      content: `${channel} wurde als Supportkanal eingerichtet`,
+      content: "Nachricht bearbeitet!",
     });
   }
 
-  async initialiseSupportChannel(channel: GuildBasedChannel) {
-    switch (channel.type) {
-      case ChannelType.GuildCategory:
-        return await this.initialiseSupportCategory(channel);
-      case ChannelType.GuildForum:
-        return await this.initialiseSupportForum(channel);
-      default:
-        console.error(`Unsupported Support Channel Type: ${channel.type}`);
-    }
+  @OnCommand("support", "channel")
+  @HasPermission("Administrator")
+  async onSupportChannelSet(command: CommandInteraction) {
+    const channel = command.options.get("channel").channel as CategoryChannel;
+    const support = await this.initialiseSupportCategory(channel);
+
+    await withResource(Server, { discordId: command.guildId }, server => {
+      server.supportChannelId = channel.id;
+      server.supportChannelType = "text";
+    });
+
+    await command.editReply({
+      content: `${support} wurde als Supportkanal eingerichtet`,
+    });
   }
 
   async initialiseSupportCategory(channel: CategoryChannel) {
@@ -117,18 +131,17 @@ export class SupportService {
         AddReactions: false,
       });
       await this.sendCreateTicketMessage(intro);
-    }
+      return intro;
+    } else return channel.children.cache.find(it => it.name === "support");
   }
 
-  async initialiseSupportForum(channel: ForumChannel) {
-    if (!channel.threads.cache.find(it => it.name === "support")) {
-      return;
-    }
-  }
-
-  async sendCreateTicketMessage(channel: TextBasedChannel) {
-    await channel.send({
-      content: "Eröffne eine Supportanfrage:",
+  async sendCreateTicketMessage(channel: GuildTextBasedChannel) {
+    const msg = await this.messages.getOrCreateManagedMessage(
+      channel.guild,
+      key,
+    );
+    await this.messages.replaceMessage(channel.guild, channel, key, {
+      content: msg.content || "Eröffne eine Supportanfrage:",
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
@@ -222,19 +235,8 @@ Ich habe einen Fehler gefunden...`),
     member: GuildMember,
   ) {
     const channel = await guild.channels.fetch(ticket.guild.supportChannelId);
-    switch (ticket.guild.supportChannelType) {
-      case "forum":
-        return this.createForumChannel(ticket, channel as any, member);
-      case "text":
-        return this.createTextChannel(ticket, channel as any, member);
-    }
+    return this.createTextChannel(ticket, channel as any, member);
   }
-
-  async createForumChannel(
-    ticket: SupportTicket,
-    channel: ForumChannel,
-    member: GuildMember,
-  ) {}
 
   async createTextChannel(
     ticket: SupportTicket,
