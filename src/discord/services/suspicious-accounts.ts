@@ -55,6 +55,12 @@ export class SuspiciousAccountsService {
                 .setName("user")
                 .setDescription("Die Benutzer*in")
                 .setRequired(true),
+            )
+            .addStringOption(opt =>
+              opt
+                .setName("reason")
+                .setDescription("Begründung für die Markierung")
+                .setRequired(false),
             ),
         )
         .addSubcommand(cmd =>
@@ -108,6 +114,7 @@ export class SuspiciousAccountsService {
   async onSusAccountAdd(cmd: CommandInteraction) {
     const user = cmd.options.getUser("user", true);
     const member = cmd.guild.members.cache.get(user.id);
+    const reason = cmd.options.get("reason").value?.toString();
 
     const server = await getServer(cmd.guildId);
 
@@ -116,11 +123,13 @@ export class SuspiciousAccountsService {
     )) as BaseGuildTextChannel;
 
     const message = await channel.send({
-      content: `Verdächtiger Account: ${member}`,
+      content: [`Verdächtiger Account: ${member}`, reason]
+        .filter(it => it)
+        .join("\n"),
     });
 
     const thread = await channel.threads.create({
-      name: `Verdächtiger Account: ${member}`,
+      name: `Verdächtiger Account: ${member.displayName}`,
       type: ChannelType.GuildPublicThread,
       startMessage: message,
     });
