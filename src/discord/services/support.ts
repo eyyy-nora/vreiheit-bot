@@ -85,9 +85,35 @@ export class SupportService {
   }
 
   @OnCommand("support", "message")
-  @HasPermission("Administrator")
   async onSupportMessageUpdate(command: CommandInteraction) {
     const content = command.options.get("content")?.value?.toString()?.trim();
+
+    if (content === "-") {
+      const value = await this.messages.getContent(command.guild, key);
+      return command.showModal(
+        new ModalBuilder()
+          .setCustomId("support:message")
+          .setTitle("Support-Nachricht bearbeiten")
+          .setComponents(
+            new ActionRowBuilder<TextInputBuilder>().setComponents(
+              new TextInputBuilder()
+                .setStyle(TextInputStyle.Paragraph)
+                .setLabel("Inhalt")
+                .setRequired(true)
+                .setCustomId("content")
+                .setPlaceholder("Erstelle eine Supportanfrage...")
+                .setValue(value),
+            ),
+          ),
+      );
+    }
+    await command.deferReply({ ephemeral: true });
+
+    if (!command.memberPermissions.has("Administrator"))
+      return await command.editReply({
+        content: "Dir fehlen die Berechtigungen, dies zu tun.",
+      });
+
     if (!content)
       return await command.editReply({
         content: "Du musst einen Text mitgeben!",
@@ -98,6 +124,13 @@ export class SupportService {
     await command.editReply({
       content: "Nachricht bearbeitet!",
     });
+  }
+
+  @OnFormSubmit("message")
+  @HasPermission("Administrator")
+  async onMessageSubmit(form: ModalSubmitInteraction) {
+    const content = form.fields.getTextInputValue("content");
+    await this.messages.editMessage(form.guild, key, content);
   }
 
   @OnCommand("support", "channel")
