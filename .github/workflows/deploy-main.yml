@@ -23,7 +23,7 @@ jobs:
           docker push ghcr.io/${{ secrets.GH_USERNAME }}/vreiheit-bot:${{ github.sha }}
           docker push ghcr.io/${{ secrets.GH_USERNAME }}/vreiheit-bot:latest
       - uses: azure/setup-kubectl@v3
-      - uses: azure/k8s-set-context@v1
+      - uses: azure/k8s-set-context@v3
         with:
           method: kubeconfig
           kubeconfig: ${{ secrets.K8_CONFIG }}
