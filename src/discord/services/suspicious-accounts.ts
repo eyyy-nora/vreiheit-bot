@@ -1,6 +1,5 @@
 import {
   ActionRowBuilder,
-  AuditLogEvent,
   BaseGuildTextChannel,
   ButtonBuilder,
   ButtonStyle,
@@ -10,7 +9,6 @@ import {
   EmbedBuilder,
   Guild,
   GuildMember,
-  GuildTextBasedChannel,
   Message,
   SlashCommandBuilder,
   ThreadChannel,
@@ -33,7 +31,6 @@ import {
   getServerMember,
   updateServerMember,
   withServer,
-  withServerMember,
 } from "src/discord/members/get-server-member";
 import * as Diff from "diff";
 
