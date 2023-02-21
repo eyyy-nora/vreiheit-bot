@@ -3,37 +3,66 @@ import { Server } from "src/database/entities/server";
 import { ServerMember } from "src/database/entities/server-member";
 import { dataSource } from "src/database/data-source";
 import { PromiseOr } from "src/util";
+import { DeepPartial } from "typeorm";
 
-export async function getServerMember(member: GuildMember, save = true) {
-  let user = await dataSource.getRepository(ServerMember).findOne({
-    where: { discordId: member.user.id, guild: { discordId: member.guild.id } },
+const serverCache: Record<string, string> = {};
+
+export async function getServerMember(
+  member: GuildMember,
+  properties: DeepPartial<ServerMember> = {},
+) {
+  const repo = dataSource.getRepository(ServerMember);
+  const filter = {
+    where: {
+      discordId: member.user.id,
+      guild: { discordId: member.guild.id },
+    },
     relations: ["guild"],
-  });
-  if (user == null) {
-    user = new ServerMember();
-    user.discordId = member.user.id;
-    user.guild = await getServer(member.guild.id);
-  }
-  user.username = member.user.username;
-  user.discriminator = member.user.discriminator;
-  user.avatarUrl = member.displayAvatarURL();
-  if (save) await dataSource.getRepository(ServerMember).save(user);
-  return user;
+  };
+
+  const matching = await repo.findOne(filter);
+  await repo.upsert(
+    {
+      uuid: matching?.uuid,
+      discordId: member.user.id,
+      username: member.user.username,
+      discriminator: member.user.discriminator,
+      avatarUrl: member.user.displayAvatarURL(),
+      ...properties,
+    },
+    ["uuid"],
+  );
+  return await repo.findOne(filter);
 }
 
 export async function withServerMember(
   member: GuildMember,
   fn: (member: ServerMember) => PromiseOr<void>,
 ) {
-  const user = await getServerMember(member, false);
+  const user = await getServerMember(member);
   await fn(user);
   await dataSource.getRepository(ServerMember).save(user);
+}
+
+export async function updateServerMember(
+  member: GuildMember,
+  partial: DeepPartial<ServerMember>,
+) {
+  await getServerMember(member, partial);
 }
 
 export async function getServer(id: string) {
   return await dataSource
     .getRepository(Server)
     .findOne({ where: { discordId: id } });
+}
+
+export async function getServerConstraint(id: string) {
+  return { uuid: await getServerId(id) } as Server;
+}
+
+export async function getServerId(id: string) {
+  return (serverCache[id] ??= (await getServer(id)).uuid);
 }
 
 export async function withServer(

@@ -8,6 +8,7 @@ import {
   Client,
   CommandInteraction,
   EmbedBuilder,
+  Guild,
   GuildMember,
   GuildTextBasedChannel,
   Message,
@@ -30,6 +31,7 @@ import {
 import {
   getServer,
   getServerMember,
+  updateServerMember,
   withServer,
   withServerMember,
 } from "src/discord/members/get-server-member";
@@ -117,30 +119,9 @@ export class SuspiciousAccountsService {
     const member = cmd.guild.members.cache.get(user.id);
     const reason = cmd.options.get("reason")?.value?.toString();
 
-    const server = await getServer(cmd.guildId);
+    const thread = await this.getThread(member, reason ?? undefined);
 
-    const channel = (await cmd.guild.channels.fetch(
-      server.susActivityChannelId,
-    )) as BaseGuildTextChannel;
-
-    let thread = await this.getThread(member);
-
-    if (!thread) {
-      const message = await channel.send({
-        content: [
-          `Verdächtiger Account: ${member}`,
-          reason ? `Grund: ${reason}` : undefined,
-        ]
-          .filter(it => it)
-          .join("\n"),
-      });
-
-      thread = await channel.threads.create({
-        name: `Verdächtiger Account: ${member.displayName}`,
-        type: ChannelType.GuildPublicThread,
-        startMessage: message,
-      });
-    } else if (thread.archived) {
+    if (thread.archived) {
       await thread.setArchived(false);
       await thread.send({
         content: [
@@ -152,9 +133,9 @@ export class SuspiciousAccountsService {
       });
     }
 
-    await withServerMember(member, member => {
-      member.suspect = true;
-      member.suspectThreadId = thread.id;
+    await updateServerMember(member, {
+      suspect: true,
+      suspectThreadId: thread.id,
     });
     this.susAccounts[cmd.guildId].push(user.id);
     await cmd.editReply({
@@ -167,21 +148,20 @@ export class SuspiciousAccountsService {
   async onSusAccountRemove(cmd: CommandInteraction) {
     const user = cmd.options.getUser("user", true);
     const member = cmd.guild.members.cache.get(user.id);
-    await withServerMember(member, member => {
-      member.suspect = false;
-    });
+
+    await updateServerMember(member, { suspect: false });
     const accs = this.susAccounts[cmd.guildId];
     const index = accs.indexOf(user.id);
     if (index !== -1) accs.splice(index, 1);
-    await cmd.editReply({
-      content: `${member} ist nicht mehr als verdächtig markiert.`,
-    });
 
     const thread = await this.getThread(member);
     await thread.send({
       content: `${member} ist nicht mehr als verdächtig markiert.`,
     });
     await thread.setArchived(true);
+    await cmd.editReply({
+      content: `${member} ist nicht mehr als verdächtig markiert.`,
+    });
   }
 
   @OnCommand("sus", "channel")
@@ -252,15 +232,46 @@ export class SuspiciousAccountsService {
     return this.susAccounts[member.guild.id].includes(member.user.id);
   }
 
-  async getThread(member: GuildMember) {
+  async getThread(member: GuildMember, reason?: string) {
+    const data = await getServerMember(member);
+    if (!data.suspectThreadId) return await this.createThread(member, reason);
     try {
-      const data = await getServerMember(member);
       return (await member.guild.channels.fetch(
         data.suspectThreadId,
       )) as ThreadChannel;
     } catch {
+      return await this.createThread(member, reason);
       /* ignore */
     }
+  }
+
+  async createThread(member: GuildMember, reason?: string) {
+    const channel = await this.getSusChannel(member.guild);
+
+    const message = await channel.send({
+      content: [
+        `Verdächtiger Account: ${member}`,
+        reason ? `Grund: ${reason}` : undefined,
+      ]
+        .filter(it => it)
+        .join("\n"),
+    });
+
+    const thread = await channel.threads.create({
+      name: `Verdächtiger Account: ${member.displayName}`,
+      type: ChannelType.GuildPublicThread,
+      startMessage: message,
+    });
+
+    await updateServerMember(member, { suspectThreadId: thread.id });
+    return thread;
+  }
+
+  async getSusChannel(guild: Guild) {
+    const server = await getServer(guild.id);
+    return (await guild.channels.fetch(
+      server.susActivityChannelId,
+    )) as BaseGuildTextChannel;
   }
 
   buildMessageActionRow(message: Message) {
