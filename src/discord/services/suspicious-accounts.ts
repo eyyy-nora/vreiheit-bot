@@ -32,7 +32,7 @@ import {
   updateServerMember,
   withServer,
 } from "src/discord/members/get-server-member";
-import * as Diff from "diff";
+import { buildDiff } from "src/util/diff";
 
 @Handler("sus")
 export class SuspiciousAccountsService {
@@ -186,7 +186,7 @@ export class SuspiciousAccountsService {
 
   @OnMessageCreate()
   async onMessageCreate(message: Message) {
-    if (!this.isSus(message.member)) return;
+    if (!(await this.isSus(message.member))) return;
     const thread = await this.getThread(message.member);
     await thread.send({
       embeds: [this.buildMessageEmbed("Nachricht gepostet", message)],
@@ -196,7 +196,7 @@ export class SuspiciousAccountsService {
 
   @OnMessageUpdate()
   async onMessageUpdate(oldMsg: Message, newMsg: Message) {
-    if (!this.isSus(newMsg.member)) return;
+    if (!(await this.isSus(newMsg.member))) return;
     if (oldMsg.cleanContent === newMsg.cleanContent && oldMsg.cleanContent)
       return;
     const thread = await this.getThread(newMsg.member);
@@ -208,7 +208,7 @@ export class SuspiciousAccountsService {
 
   @OnMessageDelete()
   async onMessageDelete(message: Message) {
-    if (!this.isSus(message.member)) return;
+    if (!(await this.isSus(message.member))) return;
     const thread = await this.getThread(message.member);
     await thread.send({
       embeds: [this.buildMessageEmbed("Nachricht gelöscht", message)],
@@ -218,15 +218,15 @@ export class SuspiciousAccountsService {
 
   @OnMemberUpdate()
   async onMemberUpdate(oldMember: GuildMember, newMember: GuildMember) {
-    if (!this.isSus(newMember)) return;
+    if (!(await this.isSus(newMember))) return;
     const thread = await this.getThread(newMember);
     thread.send({
       content: `${newMember} hat den Nickname von **${oldMember.displayName}** zu **${newMember.displayName}** geändert.`,
     });
   }
 
-  isSus(member: GuildMember) {
-    return this.susAccounts[member.guild.id].includes(member.user.id);
+  async isSus(member: GuildMember) {
+    return (await getServerMember(member)).suspect;
   }
 
   async getThread(member: GuildMember, reason?: string) {
@@ -281,7 +281,7 @@ export class SuspiciousAccountsService {
   }
 
   buildMessageEmbed(title: string, message: Message, old?: Message) {
-    let content = this.buildDiff(
+    let content = buildDiff(
       message.cleanContent.replace(/[*\\_~|]+/g, ""),
       (old?.cleanContent ?? message.cleanContent).replace(/[*\\_~|]+/g, ""),
     );
@@ -315,32 +315,5 @@ export class SuspiciousAccountsService {
       .setTitle(title)
       .setFields(fields)
       .setDescription(content);
-  }
-
-  buildDiff(a: string, b: string) {
-    if (a.toLowerCase() === b.toLowerCase()) return a;
-    const patches = Diff.diffWords(a, b, { ignoreCase: true });
-    const parts: { added?: string; removed?: string; value?: string }[] = [];
-    let lastRemoved = false;
-    let lastAdded = false;
-    for (const part of patches) {
-      if (part.added) {
-        if (lastRemoved) parts[parts.length - 1].added = part.value;
-        else parts.push({ added: part.value });
-      } else if (part.removed) {
-        if (lastAdded) parts[parts.length - 1].removed = part.value;
-        else parts.push({ removed: part.value });
-      } else parts.push({ value: part.value });
-      lastRemoved = part.removed;
-      lastAdded = part.added;
-    }
-    return parts
-      .map(({ added, removed, value }) => {
-        if (added && removed) return `[~~${added}~~ -> **${removed}**]`;
-        if (added) return `[**${added}**]`;
-        if (removed) return `[**${removed}**]`;
-        return value;
-      })
-      .join("");
   }
 }

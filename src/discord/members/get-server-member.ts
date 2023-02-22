@@ -21,7 +21,7 @@ export async function getServerMember(
   };
 
   const matching = await repo.findOne(filter);
-  await repo.upsert(
+  const { identifiers } = await repo.upsert(
     {
       uuid: matching?.uuid,
       discordId: member.user.id,
@@ -32,7 +32,7 @@ export async function getServerMember(
     },
     ["uuid"],
   );
-  return await repo.findOne(filter);
+  return await repo.findOne({ where: identifiers[0], relations: ["guild"] });
 }
 
 export async function withServerMember(
