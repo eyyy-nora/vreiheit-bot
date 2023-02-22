@@ -20,6 +20,7 @@ import { dataSource } from "src/database/data-source";
 import {
   getServer,
   getServerMember,
+  updateServerMember,
   withServer,
   withServerMember,
 } from "src/discord/members/get-server-member";
@@ -232,8 +233,8 @@ export class HierarchyService {
   @OnMemberLeave()
   async onMemberLeave(member: GuildMember) {
     if (member.user.bot) return;
-    await withServerMember(member, user => {
-      user.leftAt = new Date();
+    await updateServerMember(member, {
+      leftAt: new Date(),
     });
   }
 

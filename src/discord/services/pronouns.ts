@@ -24,7 +24,7 @@ import {
   OnInit,
   OnMemberLeave,
 } from "src/discord/decorators";
-import { withServerMember } from "src/discord/members/get-server-member";
+import { updateServerMember } from "src/discord/members/get-server-member";
 import { ensureRolesExist } from "src/discord/roles/ensure-roles-exist";
 import { I18nService } from "src/discord/services/i18n";
 import { chunks, createInverseLookup } from "src/util";
@@ -240,8 +240,8 @@ export class Pronouns {
         }
       } else if (match) await member.roles.add((added = role));
     }
-    await withServerMember(member, user => {
-      user.pronouns = this.pronounNames[member.guild.id][added] ?? added;
+    await updateServerMember(member, {
+      pronouns: this.pronounNames[member.guild.id][added] ?? added,
     });
   }
 

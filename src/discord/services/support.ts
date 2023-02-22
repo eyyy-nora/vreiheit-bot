@@ -7,14 +7,11 @@ import {
   ChannelType,
   Client,
   CommandInteraction,
-  ForumChannel,
   Guild,
-  GuildBasedChannel,
   GuildMember,
   ModalBuilder,
   ModalSubmitInteraction,
   SlashCommandBuilder,
-  TextBasedChannel,
   TextInputBuilder,
   TextInputStyle,
   TextChannel,
@@ -313,6 +310,10 @@ Ich habe einen Fehler gefunden...`),
     await thread.permissionOverwrites.create(thread.guild.roles.everyone, {
       ViewChannel: false,
       SendMessages: false,
+    });
+    await thread.permissionOverwrites.create(ticket.guild.modRoleId, {
+      ViewChannel: true,
+      SendMessages: true,
     });
     await thread.permissionOverwrites.create(member, {
       ViewChannel: true,

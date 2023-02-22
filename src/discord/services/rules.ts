@@ -22,7 +22,7 @@ import {
   OnFormSubmit,
   OnInit,
 } from "src/discord/decorators";
-import { withServerMember } from "src/discord/members/get-server-member";
+import { updateServerMember } from "src/discord/members/get-server-member";
 import { ManagedMessageService } from "src/discord/services/managed-message";
 
 @Handler("rules")
@@ -53,8 +53,8 @@ export class RulesService {
   async onRulesAccept(interaction: ButtonInteraction) {
     await interaction.deferReply({ ephemeral: true });
     await interaction.deleteReply();
-    await withServerMember(interaction.member as any, user => {
-      user.rulesAccepted = true;
+    await updateServerMember(interaction.member as any, {
+      rulesAccepted: true,
     });
   }
 
