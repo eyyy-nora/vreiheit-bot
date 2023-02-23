@@ -294,13 +294,14 @@ Ich habe einen Fehler gefunden...`),
   }
 
   async initialiseSupportTicket(ticket: SupportTicket, thread: TextChannel) {
+    const { modRoleId } = ticket.guild;
     await this.setupThreadPermissions(ticket, thread);
     await thread.send({
       embeds: [new EmbedBuilder().setDescription("Ticket wird erstellt...")],
     });
     await this.updateTicketStatus(thread, ticket);
     await thread.send({
-      content: `Bitte beschreibe deine Problematik so genau wie möglich. Jemand aus der Moderation wird sich bald um dich kümmern.`,
+      content: `Bitte beschreibe deine Problematik so genau wie möglich. Jemand aus der <@&${modRoleId}> wird sich bald um dich kümmern.`,
     });
   }
 
@@ -335,8 +336,8 @@ Ich habe einen Fehler gefunden...`),
   }
 
   @OnButton("remove")
+  @HasPermission("ManageMessages")
   async onTicketRemove(btn: ButtonInteraction, ticketId: string) {
-    await btn.deferUpdate();
     const ticket = await this.findTicket(ticketId);
     const channel = await btn.guild.channels.fetch(ticket.channelId);
     await channel.delete();
