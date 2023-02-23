@@ -17,6 +17,7 @@ import {
 import { ensureCommand } from "src/discord/commands/ensure-command";
 import {
   Handler,
+  HasPermission,
   InjectService,
   OnButton,
   OnCommand,
@@ -103,22 +104,13 @@ export class Pronouns {
   }
 
   @OnCommand("pronouns")
+  @HasPermission("ManageMessages")
   async onPronounsCommand(interaction: CommandInteraction) {
-    if (!interaction.memberPermissions.has("Administrator")) {
-      await interaction.reply({
-        ephemeral: true,
-        content: "Dazu hast du keine Berechtigungen!",
-      });
-      return;
-    } else {
-      await interaction.deferReply({ ephemeral: true });
-      await interaction.deleteReply();
-    }
-
     await interaction.channel.send({
       content: this.i18n.get("guild.pronouns"),
       components: await this.primaryPronounButtons(interaction.guild),
     });
+    await interaction.deleteReply();
   }
 
   @OnButton("set")

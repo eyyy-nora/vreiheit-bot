@@ -94,12 +94,13 @@ export class RulesService {
   @HasPermission("Administrator")
   async onShowRules(interaction: CommandInteraction) {
     const text = await this.messages.getContent(interaction.guild, "rules");
+    const parsed = JSON.parse(text);
     await this.messages.replaceMessage(
       interaction.guild,
       interaction.channel,
       "rules",
       {
-        embeds: [new EmbedBuilder().setDescription(text)],
+        embeds: parsed,
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()

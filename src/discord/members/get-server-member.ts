@@ -12,15 +12,14 @@ export async function getServerMember(
   properties: DeepPartial<ServerMember> = {},
 ) {
   const repo = dataSource.getRepository(ServerMember);
-  const filter = {
+  const server = await getServer(member.guild.id);
+  const matching = await repo.findOne({
     where: {
       discordId: member.user.id,
       guild: { discordId: member.guild.id },
     },
     relations: ["guild"],
-  };
-
-  const matching = await repo.findOne(filter);
+  });
   const { identifiers } = await repo.upsert(
     {
       uuid: matching?.uuid,
@@ -28,11 +27,16 @@ export async function getServerMember(
       username: member.user.username,
       discriminator: member.user.discriminator,
       avatarUrl: member.user.displayAvatarURL(),
+      guild: matching?.guild ?? server,
       ...properties,
     },
-    ["uuid"],
+    { conflictPaths: ["uuid"], skipUpdateIfNoValuesChanged: true },
   );
-  return await repo.findOne({ where: identifiers[0], relations: ["guild"] });
+  return await repo.findOne({
+    where: identifiers[0],
+    relations: ["guild"],
+    cache: false,
+  });
 }
 
 export async function withServerMember(
@@ -48,7 +52,7 @@ export async function updateServerMember(
   member: GuildMember,
   partial: DeepPartial<ServerMember>,
 ) {
-  await getServerMember(member, partial);
+  console.log(await getServerMember(member, partial));
 }
 
 export async function getServer(id: string) {
@@ -72,4 +76,8 @@ export async function withServer(
   const server = await getServer(id);
   await fn(server);
   await dataSource.getRepository(Server).save(server);
+}
+
+export async function updateServer(id: string, patch: DeepPartial<Server>) {
+  await dataSource.getRepository(Server).update({ discordId: id }, patch);
 }

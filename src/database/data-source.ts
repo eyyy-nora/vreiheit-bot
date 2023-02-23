@@ -15,6 +15,7 @@ export const dataSource = new DataSource({
   username: env("POSTGRES_USER", "vreiheit"),
   password: env("POSTGRES_PASSWORD", "vreiheit"),
   synchronize: true,
+  logging: true,
   entities: [
     BlockedTerm,
     Server,

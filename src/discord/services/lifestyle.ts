@@ -13,10 +13,17 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 import { ensureCommand } from "src/discord/commands/ensure-command";
-import { Handler, OnButton, OnCommand, OnInit } from "src/discord/decorators";
+import {
+  Handler,
+  HasPermission,
+  OnButton,
+  OnCommand,
+  OnInit,
+} from "src/discord/decorators";
 import {
   getServer,
   getServerMember,
+  updateServer,
   withServer,
 } from "src/discord/members/get-server-member";
 import { sleep } from "src/util";
@@ -75,27 +82,23 @@ export class LifestyleService {
   }
 
   @OnCommand("set-vegan-role")
+  @HasPermission("Administrator")
   async onSetVeganRole(command: CommandInteraction) {
-    await command.deferReply();
-    if (!command.memberPermissions.has("Administrator"))
-      return command.reply("Das darfst du nicht.");
     const role = command.options.get("role", true)?.role?.id;
     if (!role) return command.reply("Diese Rolle existiert nicht.");
-    await withServer(command.guildId, server => {
-      server.veganRoleId = role;
+    await updateServer(command.guildId, {
+      veganRoleId: role,
     });
     await command.deleteReply();
   }
 
   @OnCommand("set-not-vegan-role")
+  @HasPermission("Administrator")
   async onSetNonVeganRole(command: CommandInteraction) {
-    await command.deferReply();
-    if (!command.memberPermissions.has("Administrator"))
-      return command.reply("Das darfst du nicht.");
     const role = command.options.get("role", true)?.role?.id;
     if (!role) return command.reply("Diese Rolle existiert nicht.");
-    await withServer(command.guildId, server => {
-      server.notVeganRoleId = role;
+    await updateServer(command.guildId, {
+      notVeganRoleId: role,
     });
     await command.deleteReply();
   }

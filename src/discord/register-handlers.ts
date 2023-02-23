@@ -88,34 +88,6 @@ client.on("ready", async client => {
 
       await repo.save(data);
     }
-
-    for (const { member, data } of toDm) {
-      if (data.reminded) continue;
-      data.reminded = true;
-
-      if (data.hierarchyRole !== server.newComerRoleId && !data.pronouns) {
-        await sendDm(member, {
-          content: `**Hey ${member}!**
-
-Vielen Dank, das du dem einfach-vegan Discord beigetreten bist!
-Ich habe mitbekommen, dass du deine Pronomen noch nicht festgelegt hast.
-Bitte erledige dies im channel 🎭︱infos-zu-rollen.
-
-Vielen Dank!`,
-        });
-        await sleep(5000);
-      } else if (data.hierarchyRole === server.newComerRoleId) {
-        await sendDm(member, {
-          content: `**Hey ${member}!**
-          
-Schön, dass du dich dazu entschieden hast dem einfach-vegan Discord zu joinen und ein Teil der Community zu sein. Es sollte ein großer Safespace für uns alle werden, weshalb wir dich darum bitten im Channel 🎭︱infos-zu-rollen die Regeln zu akzeptieren, sowie deine Pronomen und deinen derzeitigen Lebensstil festzulegen. Dann hast du nämlich auch automatisch Zugriff auf den vollen Umfang der Text- & Voicechannel.
-
-Dankeschön, dass du daran partizipierst diesen Planeten zu einem besseren Ort zu machen. 💚`,
-        });
-        await sleep(5000);
-      }
-      await repo.save(data);
-    }
   }
 });
 
