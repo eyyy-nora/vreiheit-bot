@@ -13,3 +13,4 @@ export * from "./mod-help";
 export * from "./support";
 export * from "./interests";
 export * from "./suspicious-accounts";
+export * from "./autovoice";

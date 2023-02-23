@@ -77,6 +77,9 @@ export class Server {
     { roleId?: string; name: string; description: string; tag: string }
   >;
 
+  @Column("varchar", { nullable: true })
+  voiceCategoryId!: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

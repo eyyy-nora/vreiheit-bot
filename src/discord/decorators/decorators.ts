@@ -31,6 +31,10 @@ export function OnCommand(commandId?: string, subcommandId?: string) {
   });
 }
 
+export function OnVoiceStateUpdate() {
+  return createHandlerDecorator("voiceStateUpdate");
+}
+
 export function OnFormSubmit(formId?: string) {
   return createInteractionDecorator(InteractionType.ModalSubmit, formId);
 }

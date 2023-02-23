@@ -141,5 +141,9 @@ client.on("messageDelete", async message => {
   for (const handler of registeredHandlers.messageDelete)
     await handler(message as any);
 });
+client.on("voiceStateUpdate", async (oldState, newState) => {
+  for (const handler of registeredHandlers.voiceStateUpdate)
+    await handler(oldState, newState);
+});
 
 client.on("error", console.error);

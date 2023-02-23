@@ -5,6 +5,7 @@ import {
   Interaction,
   Message,
   Role,
+  VoiceState,
 } from "discord.js";
 import { registerService } from "src/discord/decorators/inject";
 import { DiscordHandlerMeta, getMeta } from "src/discord/decorators/meta";
@@ -35,6 +36,7 @@ export interface HandlerMap {
 
   init: RegularHandler<Client<true>>[];
   interaction: IdHandler<Interaction>[];
+  voiceStateUpdate: UpdateHandler<VoiceState>[];
 }
 
 export const registeredHandlers: HandlerMap = emptyHandlerMap();
@@ -54,6 +56,7 @@ export function emptyHandlerMap(): HandlerMap {
     messageUpdate: [],
     init: [],
     interaction: [],
+    voiceStateUpdate: [],
   };
 }
 
