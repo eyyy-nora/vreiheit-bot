@@ -442,7 +442,10 @@ export class ManagedMessageService {
       }
       if (message.type === "content") return { content };
       else return { embeds: [new EmbedBuilder().setDescription(content)] };
-    } else return content ?? this.normaliseContent(message, message.content);
+    } else
+      return content ?? message.content
+        ? this.normaliseContent(message, message.content)
+        : { content: null };
   }
 
   content(message: Partial<MessageEditOptions>) {
