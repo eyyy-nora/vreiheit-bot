@@ -5,7 +5,6 @@ import {
   CommandInteraction,
   Guild,
   SlashCommandBuilder,
-  VoiceChannel,
   VoiceState,
 } from "discord.js";
 import { ensureCommand } from "src/discord/commands/ensure-command";
@@ -49,10 +48,7 @@ export class AutovoiceService {
 
   @OnVoiceStateUpdate()
   async onVoiceStateUpdate(oldState: VoiceState, newState: VoiceState) {
-    if (
-      (!oldState.channel && newState.channel) ||
-      (!newState.channel && oldState.channel)
-    )
+    if (oldState.channelId !== newState.channelId)
       await this.rebalanceVoiceChannels(newState.guild);
   }
 
