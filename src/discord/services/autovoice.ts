@@ -87,10 +87,10 @@ export class AutovoiceService {
       const empty = mapped.filter(it => it.empty);
       empty.shift();
       for (const c of empty) await c.channel.delete();
-      let i = 1;
-      for (const c of this.voiceChannels(channel))
-        await c.setName(mapped[0].channel.name.replace(/[0-9]+/g, `${i++}`));
     }
+    let i = 1;
+    for (const c of this.voiceChannels(channel))
+      await c.setName(mapped[0].channel.name.replace(/[0-9]+/g, `${i++}`));
   }
 
   async voiceCategory(guild: Guild): Promise<CategoryChannel> {
