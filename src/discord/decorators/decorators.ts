@@ -1,5 +1,8 @@
 import {
   AutocompleteInteraction,
+  CacheType,
+  CommandInteractionOption,
+  CommandInteractionOptionResolver,
   Interaction,
   InteractionType,
   PermissionResolvable,
@@ -33,15 +36,26 @@ export function OnFormSubmit(formId?: string) {
 }
 
 export function OnAutocomplete(command: string, option?: string) {
+  function findFocusedOptionRecursive(
+    options: ReadonlyArray<CommandInteractionOption>,
+  ) {
+    for (const option of options) {
+      if (option.options) return findFocusedOptionRecursive(option.options);
+      if (option.focused) return option;
+    }
+  }
+
   return interactionDecorator(
     i => {
       if (!i.isAutocomplete()) return false;
       if (i.commandName !== command) return false;
+      if (option)
+        return findFocusedOptionRecursive(i.options.data)?.name === option;
       if (option) return i.options.data.find(it => it.focused).name === option;
       else return true;
     },
     i => [
-      (i as AutocompleteInteraction).options.data.find(it => it.focused),
+      findFocusedOptionRecursive((i as AutocompleteInteraction).options.data),
       (i as AutocompleteInteraction).options.getFocused(),
     ],
   );
