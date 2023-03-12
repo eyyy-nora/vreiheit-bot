@@ -100,6 +100,17 @@ export class SupportService {
                 .setDescription("Die zu entfernende Person")
                 .setRequired(true),
             ),
+        )
+        .addSubcommand(cmd =>
+          cmd
+            .setName("assign")
+            .setDescription("Weise eine Person die Verantwortung zu")
+            .addUserOption(opt =>
+              opt
+                .setName("user")
+                .setDescription("Die zuzuweisende Person")
+                .setRequired(true),
+            ),
         ),
     );
   }
@@ -171,6 +182,27 @@ export class SupportService {
       });
     await this.removeMemberPermissions(cmd.channel as TextChannel, user);
     await cmd.channel.send(`${cmd.member} hat ${user} vom Ticket entfernt.`);
+    await cmd.deleteReply();
+  }
+
+  @OnCommand("support", "assign")
+  @HasPermission("ManageMessages")
+  async onSupportAssign(cmd: CommandInteraction) {
+    const user = cmd.options.getUser("user");
+    const ticket = await this.findTicketByChannel(cmd.channelId);
+    if (!ticket)
+      return await cmd.editReply({
+        content: "Bitte verwende diesen Befehl nur im Kontext des Tickets.",
+      });
+    const member = await cmd.guild.members.fetch(user);
+    ticket.assigned = (await getServerMember(member)) ?? ticket.assigned;
+    await dataSource.getRepository(SupportTicket).save(ticket);
+    await this.updateTicketStatus(cmd.channel as any, ticket);
+    cmd.channel.send(
+      `${cmd.member} hat ${
+        cmd.user.id === user.id ? "sich selbst" : user
+      } das Ticket zugewiesen.`,
+    );
     await cmd.deleteReply();
   }
 
@@ -338,10 +370,6 @@ Ich habe einen Fehler gefunden...`),
     });
     await this.initialiseSupportTicket(ticket, thread);
     ticket.channelId = thread.id;
-  }
-
-  randomString() {
-    return (Date.now() | 0xffffff).toString(16);
   }
 
   async initialiseSupportTicket(ticket: SupportTicket, thread: TextChannel) {
