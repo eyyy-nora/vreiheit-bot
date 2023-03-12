@@ -17,6 +17,7 @@ import {
   TextChannel,
   EmbedBuilder,
   GuildTextBasedChannel,
+  UserResolvable,
 } from "discord.js";
 import { dataSource, withResource } from "src/database/data-source";
 import { Server } from "src/database/entities/server";
@@ -77,6 +78,28 @@ export class SupportService {
                 .setRequired(true)
                 .addChannelTypes(ChannelType.GuildCategory),
             ),
+        )
+        .addSubcommand(cmd =>
+          cmd
+            .setName("add")
+            .setDescription("Füge eine Person dem Ticket hinzu")
+            .addUserOption(opt =>
+              opt
+                .setName("user")
+                .setDescription("Die hinzuzufügende Person")
+                .setRequired(true),
+            ),
+        )
+        .addSubcommand(cmd =>
+          cmd
+            .setName("remove")
+            .setDescription("Entferne eine Person aus dem Ticket")
+            .addUserOption(opt =>
+              opt
+                .setName("user")
+                .setDescription("Die zu entfernende Person")
+                .setRequired(true),
+            ),
         ),
     );
   }
@@ -121,6 +144,34 @@ export class SupportService {
     await command.editReply({
       content: "Nachricht bearbeitet!",
     });
+  }
+
+  @OnCommand("support", "add")
+  @HasPermission("ManageMessages")
+  async onSupportAddPerson(cmd: CommandInteraction) {
+    const user = cmd.options.getUser("user");
+    const ticket = await this.findTicketByChannel(cmd.channelId);
+    if (!ticket)
+      return await cmd.editReply({
+        content: "Bitte verwende diesen Befehl nur im Kontext des Tickets.",
+      });
+    await this.addMemberPermissions(cmd.channel as TextChannel, user);
+    await cmd.channel.send(`${cmd.member} hat ${user} zum Ticket hinzugefügt.`);
+    await cmd.deleteReply();
+  }
+
+  @OnCommand("support", "remove")
+  @HasPermission("ManageMessages")
+  async onSupportRemovePerson(cmd: CommandInteraction) {
+    const user = cmd.options.getUser("user");
+    const ticket = await this.findTicketByChannel(cmd.channelId);
+    if (!ticket)
+      return await cmd.editReply({
+        content: "Bitte verwende diesen Befehl nur im Kontext des Tickets.",
+      });
+    await this.removeMemberPermissions(cmd.channel as TextChannel, user);
+    await cmd.channel.send(`${cmd.member} hat ${user} vom Ticket entfernt.`);
+    await cmd.deleteReply();
   }
 
   @OnFormSubmit("message")
@@ -306,8 +357,6 @@ Ich habe einen Fehler gefunden...`),
   }
 
   async setupThreadPermissions(ticket: SupportTicket, thread: TextChannel) {
-    const memberId = ticket.author.discordId;
-    const member = await thread.guild.members.fetch(memberId);
     await thread.permissionOverwrites.create(thread.guild.roles.everyone, {
       ViewChannel: false,
       SendMessages: false,
@@ -316,10 +365,18 @@ Ich habe einen Fehler gefunden...`),
       ViewChannel: true,
       SendMessages: true,
     });
+    await this.addMemberPermissions(thread, ticket.author.discordId);
+  }
+
+  async addMemberPermissions(thread: TextChannel, member: UserResolvable) {
     await thread.permissionOverwrites.create(member, {
       ViewChannel: true,
       SendMessages: true,
     });
+  }
+
+  async removeMemberPermissions(thread: TextChannel, member: UserResolvable) {
+    await thread.permissionOverwrites.delete(member);
   }
 
   @OnButton("close")
@@ -365,6 +422,13 @@ Ich habe einen Fehler gefunden...`),
   async findTicket(id: string) {
     return await dataSource.getRepository(SupportTicket).findOne({
       where: { id: +id },
+      relations: ["author", "guild", "assigned"],
+    });
+  }
+
+  async findTicketByChannel(channelId: string) {
+    return await dataSource.getRepository(SupportTicket).findOne({
+      where: { channelId },
       relations: ["author", "guild", "assigned"],
     });
   }
